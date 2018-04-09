@@ -60,9 +60,9 @@ public class CxfConsumerContinuationTimeoutTest extends CamelTestSupport {
 
                 from("direct:start")
                     .setBody(constant("Sensitive Data"))
-                    .to(simpleEndpointURI + "&continuationTimeout=30000&dataFormat=MESSAGE");
+                    .to(simpleEndpointURI + "&continuationTimeout=5000&dataFormat=MESSAGE");
 
-                from(simpleEndpointURI + "&continuationTimeout=30000&dataFormat=MESSAGE").process(new AsyncProcessor() {
+                from(simpleEndpointURI + "&continuationTimeout=5000&dataFormat=MESSAGE").process(new AsyncProcessor() {
                     @Override
                     public void process(Exchange exchange) throws Exception {
                         AsyncProcessorHelper.process(this, exchange);
@@ -82,8 +82,8 @@ public class CxfConsumerContinuationTimeoutTest extends CamelTestSupport {
                         if ("slow".equalsIgnoreCase(priority)) {
                             pool.submit(() -> {
                                 try {
-                                    log.info("Sleeping for 50 seconds to simulate slow response");
-                                    Thread.sleep(35000);
+                                    log.info("Sleeping for 10 seconds to simulate slow response");
+                                    Thread.sleep(10000);
                                 } catch (InterruptedException e) {
                                     // ignore
                                 } finally {
@@ -117,7 +117,7 @@ public class CxfConsumerContinuationTimeoutTest extends CamelTestSupport {
     @Ignore("CAMEL-12104")
     public void testTimeout() throws Exception {
         String out = template.requestBodyAndHeader("direct:start", "Bye World", "priority", "slow", String.class);
-        assertTrue(out.contains("The OUT message was not received within: 30000 millis."));
+        assertTrue(out.contains("The OUT message was not received within: 5000 millis."));
     }
 
 }

@@ -17,16 +17,20 @@
  * under the License.
  */
 
-def MAVEN_PARAMS = '-U -B -e -fae -V -Dmaven.repo.local=/home/jenkins/jenkins-slave/maven-repositories/0 -Dmaven.compiler.fork=true -Dsurefire.rerunFailingTestsCount=2'
+def LOCAL_REPOSITORY = env.LOCAL_REPOSITORY ?: '/home/jenkins/jenkins-slave/maven-repositories/0'
+def AGENT_LABEL = env.AGENT_LABEL ?: 'ubuntu'
+def JDK_NAME = env.JDK_NAME ?: 'JDK 1.8 (latest)'
+
+def MAVEN_PARAMS = "-U -B -e -fae -V -Dmaven.repo.local=${LOCAL_REPOSITORY} -Dnoassembly -Dmaven.compiler.fork=true -Dsurefire.rerunFailingTestsCount=2"
 
 pipeline {
 
     agent {
-        label 'ubuntu'
+        label AGENT_LABEL
     }
 
     tools {
-        jdk 'JDK 1.8 (latest)'
+        jdk JDK_NAME
     }
 
     options {
@@ -38,15 +42,29 @@ pipeline {
 
     stages {
 
-        stage('Build') {
+        stage('Build & Deploy') {
+            when {
+                branch 'master'
+            }
             steps {
-                sh "./mvnw $MAVEN_PARAMS -Dnoassembly -Dmaven.test.skip.exec=true clean install"
+                sh "./mvnw $MAVEN_PARAMS -Dmaven.test.skip.exec=true clean deploy"
+            }
+        }
+
+        stage('Build') {
+            when {
+                not {
+                    branch 'master'
+                }
+            }
+            steps {
+                sh "./mvnw $MAVEN_PARAMS -Dmaven.test.skip.exec=true clean install"
             }
         }
 
         stage('Checks') {
             steps {
-                sh "./mvnw $MAVEN_PARAMS -Psourcecheck checkstyle:check"
+                sh "./mvnw $MAVEN_PARAMS -Psourcecheck -Dcheckstyle.failOnViolation=false checkstyle:check"
             }
             post {
                 always {
@@ -57,7 +75,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh "./mvnw $MAVEN_PARAMS -Dnoassembly -Dmaven.test.failure.ignore=true test"
+                sh "./mvnw $MAVEN_PARAMS -Dmaven.test.failure.ignore=true test"
             }
             post {
                 always {
@@ -67,11 +85,6 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
-            steps {
-                sh "./mvnw $MAVEN_PARAMS -Pdeploy -Dnoassembly -Dmaven.test.skip.exec=true install"
-            }
-        }
     }
 
     post {
